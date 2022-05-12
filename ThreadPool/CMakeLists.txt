@@ -11,4 +11,4 @@ add_executable(test ${test_sources})
 
 add_subdirectory(lib)
 
-target_link_libraries(test PUBLIC mylib)
+target_link_libraries(test PUBLIC mylib pthread)

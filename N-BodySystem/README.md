@@ -10,7 +10,7 @@ https://github.com/taichiCourse01/--Galaxy
 
 or  this repo just does something more upon the project of taichiCourseS1
 
-# So What Is More?
+# Feature above the base code
 
 - add a new star called comet
 - right click the screen to add a star at the click point 
