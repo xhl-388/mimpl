@@ -6,6 +6,7 @@
 #include <future>
 #include <functional>
 #include <iostream>
+#include <shared_mutex>
 
 /// <summary>
 /// 线程安全的队列
@@ -16,28 +17,28 @@ class SynchronizedQueue
 {
 private:
 	std::queue<T> m_queue; //容器
-	std::mutex m_mutex;		//容器访问锁
+	mutable std::shared_mutex m_mutex;		//容器访问锁
 public:
 	SynchronizedQueue() {}
 	SynchronizedQueue(const SynchronizedQueue& sq) = delete;
 	SynchronizedQueue(SynchronizedQueue&& other) = delete;
 
-	bool empty()
+	bool empty() const
 	{
-		std::unique_lock<std::mutex> lock(m_mutex);
+		std::shared_lock lock(m_mutex);
 		return m_queue.empty();
 	}
 
-	size_t size()
+	size_t size() const
 	{
-		std::unique_lock<std::mutex> lock(m_mutex);
+		std::shared_lock lock(m_mutex);
 		return m_queue.size();
 	}
 
 	//t是一个out参数
 	bool pop(T &t)
 	{
-		std::unique_lock<std::mutex> lock(m_mutex);
+		std::unique_lock lock(m_mutex);
 		if (m_queue.empty())
 			return false;
 		t = std::move(m_queue.front());
@@ -47,7 +48,7 @@ public:
 
 	void push(const T& t)
 	{
-		std::unique_lock<std::mutex> lock(m_mutex);
+		std::unique_lock lock(m_mutex);
 		m_queue.emplace(t);
 	}
 };
@@ -76,13 +77,16 @@ private:
 		{
 			std::function<void()> func;
 			bool dequeued;
-			while (!m_pool->m_shutdown || !m_pool->m_task_queue.empty())
+			while (true)
 			{
 				//加一层以即使释放mutex，避免func阻塞其它线程
 				{
 					std::unique_lock<std::mutex> lock(m_pool->m_conditional_mutex);
-					if (m_pool->m_task_queue.empty())
+					if (m_pool->m_task_queue.empty()){
+						if (m_pool->m_shutdown)
+							break;
 						m_pool->m_conditional_lock.wait(lock);	//等待队列加入新的元素唤醒该工作者
+					}
 					dequeued = m_pool->m_task_queue.pop(func);
 				}
 				if (dequeued)

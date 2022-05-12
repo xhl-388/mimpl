@@ -29,11 +29,11 @@ BENCHMARK(BM_normal);
 
 void BM_threadpool(benchmark::State &bm) {
     for (auto _:bm) {
-        ThreadPool pool;
+        ThreadPool pool(6);
         pool.init();
         float ans = 0;
-        for (int i = 0; i < (1<<14); i++) {
-            pool.submit(test_calculation, &ans, i*1024, i*1024+1024);
+        for (int i = 0; i < (1<<13); i++) {
+            pool.submit(test_calculation, &ans, i*2048, i*2048+2048);
         }
         pool.shutdown();
         std::cout << "threadpool ans:" << ans << std::endl;
