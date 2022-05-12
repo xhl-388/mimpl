@@ -12,3 +12,6 @@ add_executable(test ${test_sources})
 add_subdirectory(lib)
 
 target_link_libraries(test PUBLIC mylib pthread)
+
+find_package(benchmark REQUIRED)
+target_link_libraries(test PUBLIC benchmark::benchmark)

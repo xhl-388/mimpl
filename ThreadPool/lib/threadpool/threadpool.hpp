@@ -5,6 +5,7 @@
 #include <mutex>
 #include <future>
 #include <functional>
+#include <iostream>
 
 /// <summary>
 /// 线程安全的队列
@@ -75,7 +76,7 @@ private:
 		{
 			std::function<void()> func;
 			bool dequeued;
-			while (!m_pool->m_shutdown)
+			while (!m_pool->m_shutdown || !m_pool->m_task_queue.empty())
 			{
 				//加一层以即使释放mutex，避免func阻塞其它线程
 				{
@@ -91,12 +92,12 @@ private:
 	};
 	bool m_shutdown;	//线程池是否关闭
 	SynchronizedQueue<std::function<void()>> m_task_queue;	//任务队列
-	std::vector<std::thread> m_threads;		//线程池所管理的线程
+	std::vector<std::future<void>> m_threads;		//线程池所管理的线程
 	std::mutex m_conditional_mutex;		//访问任务队列的互斥锁
 	std::condition_variable m_conditional_lock;		//提交函数与工人的同步
 public:
 	ThreadPool(const int n_threads = 4) :
-		m_threads(std::vector<std::thread>(n_threads)), m_shutdown(false)
+		m_threads(std::vector<std::future<void>>(n_threads)), m_shutdown(false)
 	{
 
 	}
@@ -108,8 +109,9 @@ public:
 	//初始化线程池
 	void init()
 	{
-		for (int i = 0; i < m_threads.size(); i++)
-			m_threads.at(i) = std::thread(ThreadWorker(this, i));
+		for (int i = 0; i < m_threads.size(); i++) {
+			m_threads.at(i) = std::async(std::launch::async, ThreadWorker(this, i));
+		}
 	}	
 
 	//关闭线程池
@@ -117,10 +119,8 @@ public:
 	{
 		m_shutdown = true;
 		m_conditional_lock.notify_all();
-		for (int i = 0; i < m_threads.size(); i++)
-		{
-			if (m_threads.at(i).joinable())
-				m_threads.at(i).join();
+		for (int i = 0; i < m_threads.size(); i++) {
+			m_threads.at(i).wait();
 		}
 	}
 
