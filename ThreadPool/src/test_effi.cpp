@@ -1,9 +1,13 @@
-﻿#include <threadpool/threadpool.hpp>
+﻿// test the effiency of the threadpool in 'parallel for' situation
+
+#include <threadpool/threadpool.hpp>
 #include <vector>
 #include <benchmark/benchmark.h>
 #include <cmath>
 #include <iostream>
 
+// change the var into true to check the result of function calls
+constexpr bool CHECK_RESULT = false;
 
 constexpr size_t n = 1 << 24;
 std::mutex ans_lock;
@@ -22,7 +26,8 @@ void BM_normal(benchmark::State &bm) {
         float ans = 0;
         test_calculation(&ans, 0, n);
         benchmark::DoNotOptimize(ans);
-        std::cout << "normal ans:" << ans << std::endl;
+        if constexpr (CHECK_RESULT)
+            std::cout << "normal ans:" << ans << std::endl;
     }
 }
 BENCHMARK(BM_normal);
@@ -36,7 +41,8 @@ void BM_threadpool(benchmark::State &bm) {
             pool.submit(test_calculation, &ans, i*2048, i*2048+2048);
         }
         pool.shutdown();
-        std::cout << "threadpool ans:" << ans << std::endl;
+        if constexpr (CHECK_RESULT)
+            std::cout << "threadpool ans:" << ans << std::endl;
         benchmark::DoNotOptimize(ans);
     }
 }
